@@ -247,7 +247,6 @@ def unzip_data(zips_mapper):
     """
 
     for _zipkey, zipfiles in zips_mapper.items():
-
         latestzip = zipfiles[0][1]
 
         filepath = latestzip['name'].split('/')
@@ -311,7 +310,6 @@ def validate_age(zips_mapper):
     log.debug('validating age..')
 
     for zipkey, zipfiles in zips_mapper.items():
-
         # this is the file we want to import
         age, importsource = zipfiles[0]
 
@@ -324,7 +322,7 @@ def fetch_diva_zips(container_name, zipfolder):
     """
     fetch files from folder in an objectstore container
     :param container_name:
-    :param folder:
+    :param zipfolder:
     :return:
     """
     log.info(f"import files from {zipfolder}")

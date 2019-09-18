@@ -245,7 +245,7 @@ class ImportBouwblokTest(TaskTestCase):
         return [
             batch.ImportGmeTask(GEBIEDEN),
             batch.ImportSdlTask(GEBIEDEN, GEBIEDEN_SHP),
-            batch.ImportBuurtcombinatieTask(GEBIEDEN_SHP),
+            batch.ImportWijkTask(GEBIEDEN_SHP),
             batch.ImportBuurtTask(GEBIEDEN, GEBIEDEN_SHP),
         ]
 
@@ -283,7 +283,7 @@ class ImportBuurtcombinatieTest(TaskTestCase):
         factories.StadsdeelFactory.create(code='E')
 
     def task(self):
-        return batch.ImportBuurtcombinatieTask(GEBIEDEN_SHP)
+        return batch.ImportWijkTask(GEBIEDEN_SHP)
 
     def test_import(self):
         self.run_task()
@@ -790,7 +790,7 @@ class UpdateGGWGebiedenTaskTest(TaskTestCase):
         return [
             batch.ImportGmeTask(GEBIEDEN),
             batch.ImportSdlTask(GEBIEDEN, GEBIEDEN_SHP),
-            batch.ImportBuurtcombinatieTask(GEBIEDEN_SHP),
+            batch.ImportWijkTask(GEBIEDEN_SHP),
             batch.ImportBuurtTask(GEBIEDEN, GEBIEDEN_SHP),
             batch.ImportStatusTask(BAG),
             batch.ImportVboTask(BAG),
