@@ -1,5 +1,6 @@
 from django.db import models
 
+from bag.settings import settings
 from datasets.bag import models as bag
 from datasets.brk import models as brk
 from datasets.generic import mixins
@@ -99,6 +100,10 @@ class Brondocument(models.Model):
     def url(self):
         base_url = 'http://diva.intranet.amsterdam.nl/Brondocumenten/Wkpb'
         return '%s/%s' % (base_url, self.documentnaam)
+
+    @property
+    def extern_url(self):
+        return f'{settings.DATAPUNT_API_URL}wkpb/brondocument/{self.id}/?as_pdf'
 
     class Meta:
         verbose_name = "Brondocument"
