@@ -18,11 +18,10 @@ import proces.
 
 
 """
+import datetime
 import logging
 import os
 import time
-
-import datetime
 import zipfile
 
 from functools import lru_cache
@@ -31,37 +30,51 @@ from dateutil import parser
 
 from swiftclient.client import Connection
 
-
 log = logging.getLogger(__name__)
 
 logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("swiftclient").setLevel(logging.WARNING)
 
-os_connect = {
-    'auth_version': '2.0',
-    'authurl': 'https://identity.stack.cloudvps.com/v2.0',
-    'user': 'bag_brk',
-    'key': os.getenv('BAG_OBJECTSTORE_PASSWORD', 'insecure'),
-    'tenant_name': 'BGE000081_BAG',
-    'os_options': {
-        'tenant_id': '4f2f4b6342444c84b3580584587cfd18',
-        'region_name': 'NL',
+connections = {
+    'bag_brk': {
+        'auth_version': '2.0',
+        'authurl': 'https://identity.stack.cloudvps.com/v2.0',
+        'user': 'bag_brk',
+        'key': os.getenv('BAG_OBJECTSTORE_PASSWORD', 'insecure'),
+        'tenant_name': 'BGE000081_BAG',
+        'os_options': {
+            'tenant_id': '4f2f4b6342444c84b3580584587cfd18',
+            'region_name': 'NL',
+        }
+    },
+    'GOB_user': {
+        'auth_version': '2.0',
+        'authurl': 'https://identity.stack.cloudvps.com/v2.0',
+        'user': 'GOB_user',
+        'key': os.getenv('GOB_OBJECTSTORE_PASSWORD', 'insecure'),
+        'tenant_name': 'BGE000081_GOB',
+        'os_options': {
+            'tenant_id': '2ede4a78773e453db73f52500ef748e5',
+            'region_name': 'NL',
+        }
     }
 }
 
 # zet in data directory laat diva voor test data.
 # in settings een verschil maken
 DIVA_DIR = '/app/data'
+GOB_DIR = '/app/data/gob'
 
 
 @lru_cache(maxsize=None)
-def get_conn():
-    assert os.getenv('BAG_OBJECTSTORE_PASSWORD')
-    return Connection(**os_connect)
+def get_conn(connect):
+    assert (connect == 'bag_brk' and os.getenv('BAG_OBJECTSTORE_PASSWORD')) or (
+            connect == 'GOB_user' and os.getenv('GOB_OBJECTSTORE_PASSWORD'))
+    return Connection(**connections[connect])
 
 
-def get_full_container_list(container_name, **kwargs):
+def get_full_container_list(connect, container_name, **kwargs):
     """
     Return a listing of filenames in container `container_name`
     :param container_name:
@@ -72,56 +85,65 @@ def get_full_container_list(container_name, **kwargs):
     kwargs['limit'] = limit
     page = []
     seed = []
-    _, page = get_conn().get_container(container_name, **kwargs)
+    _, page = get_conn(connect).get_container(container_name, **kwargs)
     seed.extend(page)
 
     while len(page) == limit:
         # keep getting pages..
         kwargs['marker'] = seed[-1]['name']
-        _, page = get_conn().get_container(container_name, **kwargs)
+        _, page = get_conn(connect).get_container(container_name, **kwargs)
         seed.extend(page)
 
     return seed
 
 
-def delete_from_objectstore(container, object_name):
+def delete_from_objectstore(connect, container, object_name):
     """
     remove file `object_name` fronm `container`
     :param container: Container name
     :param object_name:
     :return:
     """
-    return get_conn().delete_object(container, object_name)
+    return get_conn(connect).delete_object(container, object_name)
 
 
-def download_diva_file(container_name, file_path, target_path=None):
-    """
-    Download a diva file
-    :param container_name:
-    :param mapped_folder: the foldername where file is written to
-    :param folder: foldername in O/S
-    :param file_name:
-    :return:
-    """
-
+def download_file(connect, container_name, file_path, target_path=None, target_root=DIVA_DIR, file_last_modified=None):
     path = file_path.split('/')
 
     file_name = path[-1]
-    log.info(f"Create file {DIVA_DIR} in {file_name}")
+    log.info(f"Create file {file_name} in {target_root}")
     file_name = path[-1]
 
     if target_path:
-        newfilename = '{}/{}'.format(DIVA_DIR, target_path)
+        newfilename = '{}/{}'.format(target_root, target_path)
     else:
-        newfilename = '{}/{}'.format(DIVA_DIR, file_name)
+        newfilename = '{}/{}'.format(target_root, file_name)
 
     if file_exists(newfilename):
         log.debug('Skipped file exists: %s', newfilename)
         return
 
     with open(newfilename, 'wb') as newfile:
-        zipdata = get_conn().get_object(container_name, file_path)[1]
-        newfile.write(zipdata)
+        data = get_conn(connect).get_object(container_name, file_path)[1]
+        newfile.write(data)
+    if file_last_modified:
+        epoch_modified = file_last_modified.timestamp()
+        os.utime(newfilename, (epoch_modified, epoch_modified))
+
+
+def download_file_data(connect, container_name, file_path):
+    return get_conn(connect).get_object(container_name, file_path)[1]
+
+
+def download_wkpb_file_data(file_path):
+    return download_file_data('GOB_user', 'productie', file_path)
+
+
+def download_diva_file(container_name, file_path, target_path=None):
+    """
+    Download a diva file
+    """
+    download_file('bag_brk', container_name, file_path, target_path=target_path)
 
 
 def file_exists(target):
@@ -151,7 +173,7 @@ def delete_old_zips(container_name, zips_mapper):
             for _, zipobject in zipfiles[1:]:
                 zippath = zipobject['name']
                 log.debug('PURGE: %s', zippath)
-                delete_from_objectstore(container_name, zippath)
+                delete_from_objectstore('bag_brk', container_name, zippath)
 
 
 """
@@ -209,7 +231,7 @@ def unzip_files(zipsource, mtime):
                 os.utime(target, (mtime, mtime))
 
 
-# list of exeptions which are not in the 'official zips'
+# list of exceptions which are not in the 'official zips'
 exception_list = [
     ('bag_geometrie/BAG_OPENBARERUIMTE_GEOMETRIE.dat',
      'bag_wkt/BAG_OPENBARERUIMTE_GEOMETRIE.dat'),
@@ -220,11 +242,10 @@ exception_list = [
     ('bag_openbareruimte_beschrijving/OPR_beschrijving.csv', ''),
 ]
 
-
-def get_specific_files(container_name):
+def get_specific_files(container_name, exception_list=exception_list):
     """
     There are some files not contained in the zips.
-    Lets pick them up seperately..
+    Lets pick them up separately.
     """
     for specific_file, target in exception_list:
 
@@ -330,7 +351,7 @@ def fetch_diva_zips(container_name, zipfolder):
     zips_mapper = {}
 
     for file_object in get_full_container_list(
-            container_name, prefix=zipfolder):
+            'bag_brk', container_name, prefix=zipfolder):
 
         if file_object['content_type'] == 'application/directory':
             continue
