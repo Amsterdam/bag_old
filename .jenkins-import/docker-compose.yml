@@ -32,4 +32,4 @@ services:
       BAG_OBJECTSTORE_PASSWORD:
       DATAPUNT_API_URL:
     command: >
-      bash -c "/app/docker-import-db.sh"
+      bash -c "/app/docker-import-db.sh ${GOB_PARAMETER}"

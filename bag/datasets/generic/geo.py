@@ -10,7 +10,7 @@ from django.contrib.gis.geos import GEOSGeometry, Polygon, MultiPolygon, Point, 
 csv.field_size_limit(sys.maxsize)
 
 
-def process_wkt(path, filename, callback):
+def process_wkt(path, filename, callback, encoding=None):
     """
     Processes a WKT file
 
@@ -19,13 +19,13 @@ def process_wkt(path, filename, callback):
     :param callback: function taking an id and a geometry; called for every row
     """
     source = os.path.join(path, filename)
-    with open(source) as f:
+    with open(source, encoding=encoding) as f:
         rows = csv.reader(f, delimiter='|')
         for row in rows:
             callback(row[0], GEOSGeometry(row[1]))
 
 
-def process_shp(path, filename, callback):
+def process_shp(path, filename, callback, encoding='ISO-8859-1'):
     """
     Processes a shape file
 
@@ -35,7 +35,7 @@ def process_shp(path, filename, callback):
     :return:
     """
     source = os.path.join(path, filename)
-    ds = DataSource(source, encoding='ISO-8859-1')
+    ds = DataSource(source, encoding=encoding)
     lyr = ds[0]
     for feature in lyr:
         callback(feature)
