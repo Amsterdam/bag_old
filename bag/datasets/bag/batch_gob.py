@@ -5,7 +5,6 @@ import os
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.db import connection
-from django.db.models import Value, CharField
 from django.utils.text import slugify
 # Project
 from search import index
@@ -125,6 +124,7 @@ class ImportPandNaamTask(batch.BasicTask):
 
         pand.pandnaam = naam
         pand.save()
+        self.log_progress()
 
 
 class ImportAvrTask(CodeOmschrijvingUvaTask):
@@ -299,7 +299,7 @@ class ImportSdlTask(batch.BasicTask, metadata.UpdateDatasetMixin):
         self.stadsdelen = dict(
             uva2.process_uva2(self.bag_path, "SDL", self.process_row, encoding=GOB_CSV_ENCODING))
         geo.process_shp(
-            self.shp_path, "GBD_Stadsdeel.shp", self.process_feature, encoding=GOB_SHAPE_ENCODING)
+            self.shp_path, "GBD_stadsdeel.shp", self.process_feature, encoding=GOB_SHAPE_ENCODING)
 
         models.Stadsdeel.objects.bulk_create(
             self.stadsdelen.values(), batch_size=database.BATCH_SIZE)
@@ -342,7 +342,7 @@ class ImportSdlTask(batch.BasicTask, metadata.UpdateDatasetMixin):
         )
 
     def process_feature(self, feat):
-        code = feat.get('CODE')
+        code = feat.get('code')
         if code not in self.stadsdelen:
             log.warning(
                 """Stadsdeel/SHP {} references non-existing stadsdeel;
@@ -384,7 +384,7 @@ class ImportBuurtTask(batch.BasicTask, metadata.UpdateDatasetMixin):
             uva2.process_uva2(self.uva_path, "BRT", self.process_row, encoding=GOB_CSV_ENCODING))
 
         geo.process_shp(
-            self.shp_path, "GBD_Buurt.shp", self.process_feature, GOB_SHAPE_ENCODING)
+            self.shp_path, "GBD_buurt.shp", self.process_feature, GOB_SHAPE_ENCODING)
 
         models.Buurt.objects.bulk_create(
             self.buurten.values(), batch_size=database.BATCH_SIZE)
@@ -434,7 +434,7 @@ class ImportBuurtTask(batch.BasicTask, metadata.UpdateDatasetMixin):
         )
 
     def process_feature(self, feat):
-        vollcode = feat.get('VOLLCODE')
+        vollcode = feat.get('code')
         code = vollcode[1:]
         if code not in self.buurten:
             log.warning("""
@@ -471,7 +471,7 @@ class ImportBouwblokTask(batch.BasicTask, metadata.UpdateDatasetMixin):
         for bb in uva2.process_uva2(self.uva_path, "BBK", self.process_row, encoding=GOB_CSV_ENCODING):
             bb.save()
 
-        geo.process_shp(self.shp_path, "GBD_Bouwblok.shp", self.process_feature, GOB_SHAPE_ENCODING)
+        geo.process_shp(self.shp_path, "GBD_bouwblok.shp", self.process_feature, GOB_SHAPE_ENCODING)
 
     def process_row(self, r):
         if not uva2.uva_geldig(
@@ -495,6 +495,7 @@ class ImportBouwblokTask(batch.BasicTask, metadata.UpdateDatasetMixin):
 
         code = r['Bouwbloknummer']
 
+        self.log_progress()
         return models.Bouwblok(
             pk=pk,
             code=code,
@@ -563,7 +564,7 @@ class ImportWplTask(batch.BasicTask):
         if not uva2.geldige_relaties(r, 'WPLGME'):
             return None
 
-        pk = r['sleutelverzendend']
+        pk = r.get('sleutelVerzendend') or r['sleutelverzendend']  # Change in case in sleutelVerzendend ??
         gemeente_id = r['WPLGME/GME/sleutelVerzendend']
         if gemeente_id not in self.gemeentes:
             log.warning("""
@@ -604,7 +605,10 @@ class ImportOpenbareRuimteTask(batch.BasicTask):
         self.omschijvingen = set()
 
     def store_opr_omschijving(self, row):
-        return row['Openbareruimtenummer'], row['Omschrijving']
+        if 'identificatie' in row and 'beschrijving' in row:
+            return row['identificatie'], row['beschrijving']
+        else:
+            return None
 
     def before(self):
         self.bronnen = set(models.Bron.objects.values_list("pk", flat=True))
@@ -653,7 +657,7 @@ class ImportOpenbareRuimteTask(batch.BasicTask):
         if not uva2.geldige_relaties(r, 'OPRBRN', 'OPRSTS', 'OPRWPL'):
             return None
 
-        pk = r['sleutelVerzendend']
+        pk = r.get('sleutelVerzendend') or r['sleutelverzendend']
         bron_id = r['OPRBRN/BRN/Code'] or None
         status_id = r['OPRSTS/STS/Code'] or None
         woonplaats_id = r['OPRWPL/WPL/sleutelVerzendend'] or None
@@ -687,6 +691,7 @@ class ImportOpenbareRuimteTask(batch.BasicTask):
         if landelijk_id:
             omschrijving = self.omschrijvingen.get(landelijk_id, None)
 
+        self.log_progress()
         return pk, models.OpenbareRuimte(
             pk=pk,
             landelijk_id=landelijk_id,
@@ -718,8 +723,13 @@ class ImportOpenbareRuimteTask(batch.BasicTask):
             OpenbareRuimte/WKT {} references non-existing openbare ruimte {};
             skipping """.format(wkt_id, key))
             return
-
-        self.openbare_ruimtes[key].geometrie = geo.get_multipoly(geometrie)
+        if geometrie:
+            self.openbare_ruimtes[key].geometrie = geo.get_multipoly(geometrie)
+        else:
+            log.warning("""
+            OpenbareRuimte/WKT {} does not contain geometry
+            skipping """.format(wkt_id))
+            return
 
 
 class SetHoofdAdres(batch.BasicTask):
@@ -754,7 +764,6 @@ class SetHoofdAdres(batch.BasicTask):
         del self.nummeraanduidingen
 
     def process(self):
-
         list(uva2.process_uva2(self.path, "NUMLIGHFD", self.process_numlig_row, encoding=GOB_CSV_ENCODING))
         list(uva2.process_uva2(self.path, "NUMSTAHFD", self.process_numsta_row, encoding=GOB_CSV_ENCODING))
         list(uva2.process_uva2(self.path, "NUMVBOHFD", self.process_numvbo_row, encoding=GOB_CSV_ENCODING))
@@ -783,6 +792,7 @@ class SetHoofdAdres(batch.BasicTask):
         nummeraanduiding.ligplaats_id = ligplaats_id
         nummeraanduiding.hoofdadres = True
         nummeraanduiding.save()
+        self.log_progress()
 
     def process_numsta_row(self, r):
         if not uva2.geldig_tijdvak(r):
@@ -807,6 +817,7 @@ class SetHoofdAdres(batch.BasicTask):
         nummeraanduiding.standplaats_id = standplaats_id
         nummeraanduiding.hoofdadres = True
         nummeraanduiding.save()
+        self.log_progress()
 
     def process_numvbo_row(self, r):
         if not uva2.geldig_tijdvak(r):
@@ -831,6 +842,7 @@ class SetHoofdAdres(batch.BasicTask):
         nummeraanduiding.verblijfsobject_id = vbo_id
         nummeraanduiding.hoofdadres = True
         nummeraanduiding.save()
+        self.log_progress()
 
     def process_numvbonvn_row(self, r):
         if not uva2.geldig_tijdvak(r):
@@ -855,6 +867,7 @@ class SetHoofdAdres(batch.BasicTask):
         nummeraanduiding.verblijfsobject_id = vbo_id
         nummeraanduiding.hoofdadres = False
         nummeraanduiding.save()
+        self.log_progress()
 
 
 class ImportNumTask(batch.BasicTask, metadata.UpdateDatasetMixin):
@@ -901,7 +914,7 @@ class ImportNumTask(batch.BasicTask, metadata.UpdateDatasetMixin):
         if not uva2.geldige_relaties(r, 'NUMBRN', 'NUMSTS', 'NUMOPR'):
             return None
 
-        pk = r['sleutelVerzendend']
+        pk = r.get('sleutelVerzendend') or r['sleutelverzendend']
         bron_id = r['NUMBRN/BRN/Code'] or None
         status_id = r['NUMSTS/STS/Code'] or None
         openbare_ruimte_id = r['NUMOPR/OPR/sleutelVerzendend'] or None
@@ -925,6 +938,7 @@ class ImportNumTask(batch.BasicTask, metadata.UpdateDatasetMixin):
                         .format(pk, openbare_ruimte_id))
             return None
 
+        self.log_progress()
         return models.Nummeraanduiding(
             pk=pk,
             landelijk_id=landelijk_id,
@@ -986,7 +1000,7 @@ class ImportLigTask(batch.BasicTask):
         if not uva2.geldige_relaties(r, 'LIGBRN', 'LIGSTS', 'LIGBRT'):
             return None
 
-        pk = r['sleutelverzendend']
+        pk = r.get('sleutelVerzendend') or r['sleutelverzendend']
         bron_id = r['LIGBRN/BRN/Code'] or None
         status_id = r['LIGSTS/STS/Code'] or None
         buurt_id = r['LIGBRT/BRT/sleutelVerzendend'] or None
@@ -1078,7 +1092,7 @@ class ImportStandplaatsenTask(batch.BasicTask):
         if not uva2.geldige_relaties(r, 'STABRN', 'STASTS', 'STABRT'):
             return
 
-        pk = r['sleutelverzendend']
+        pk = r.get('sleutelVerzendend') or r['sleutelverzendend']
         bron_id = r['STABRN/BRN/Code'] or None
         status_id = r['STASTS/STS/Code'] or None
         buurt_id = r['STABRT/BRT/sleutelVerzendend'] or None
@@ -1100,6 +1114,7 @@ class ImportStandplaatsenTask(batch.BasicTask):
             log.warning('Standplaats {} references non-existing buurt {}; ignoring'.format(pk, status_id))
             buurt_id = None
 
+        self.log_progress()
         return models.Standplaats(
             pk=pk,
             landelijk_id=landelijk_id,
@@ -1200,7 +1215,7 @@ class ImportVboTask(batch.BasicTask):
         else:
             geo = None
 
-        pk = r['sleutelverzendend']
+        pk = r.get('sleutelVerzendend') or r['sleutelverzendend']
         reden_afvoer_id = r['VBOAVR/AVR/Code'] or None
         reden_opvoer_id = r['VBOOVR/OVR/Code'] or None
         bron_id = r['VBOBRN/BRN/Code'] or None
@@ -1269,6 +1284,7 @@ class ImportVboTask(batch.BasicTask):
             log.warning('Verblijfsobject {} references non-existing bron {}; ignoring'.format(pk, buurt_id))
             buurt_id = None
 
+        self.log_progress()
         return models.Verblijfsobject(
             pk=pk,
             landelijk_id=landelijk_id,
@@ -1345,7 +1361,7 @@ class ImportPandTask(batch.BasicTask):
         if not uva2.geldige_relaties(r, 'PNDSTS', 'PNDBBK'):
             return
 
-        pk = r['sleutelverzendend']
+        pk = r.get('sleutelVerzendend') or r['sleutelverzendend']
         status_id = r['PNDSTS/STS/Code'] or None
         bbk_id = r['PNDBBK/BBK/sleutelVerzendend'] or None
         landelijk_id = self.landelijke_ids.get(r['Pandidentificatie'])
@@ -1362,6 +1378,7 @@ class ImportPandTask(batch.BasicTask):
             log.warning('Pand {} references non-existing bouwblok {}; ignoring'.format(pk, bbk_id))
             bbk_id = None
 
+        self.log_progress()
         return pk, models.Pand(
             pk=pk,
             landelijk_id=landelijk_id,
@@ -1434,6 +1451,7 @@ class ImportPandVboTask(batch.BasicTask):
             log.warning('Pand/VBO {} references non-existing pand {}; skipping'.format(pand_id, pand_id))
             return None
 
+        self.log_progress()
         return models.VerblijfsobjectPandRelatie(
             verblijfsobject_id=vbo_id,
             pand_id=pand_id,
@@ -1636,24 +1654,27 @@ class ImportWijkTask(batch.BasicTask):
 
     def process(self):
         geo.process_shp(
-            self.shp_path, "GBD_Buurtcombinatie.shp", self.process_feature, encoding=GOB_SHAPE_ENCODING)
+            self.shp_path, "GBD_wijk.shp", self.process_feature, encoding=GOB_SHAPE_ENCODING)
 
     def process_feature(self, feat):
-        vollcode = feat.get('VOLLCODE')
 
-        models.Buurtcombinatie(
-            id=str(int(feat.get('ID'))),
-            naam=feat.get('NAAM'),
-            code=feat.get('CODE'),
+        vollcode = feat.get('code')
+        code = vollcode[1:]
+        stadsdeel_id = vollcode[:1]
+        wijk = models.Buurtcombinatie(
+            id=str(int(feat.get('id'))),
+            naam=feat.get('naam'),
+            code=code,
             vollcode=vollcode,
-            brondocument_naam=feat.get('DOCNR'),
-            brondocument_datum=feat.get('DOCDATUM'),
-            ingang_cyclus=feat.get('INGSDATUM'),
+            brondocument_naam=feat.get('docnummer'),
+            brondocument_datum=feat.get('docdatum') or None,
+            ingang_cyclus=feat.get('begindatum') or None,
             geometrie=geo.get_multipoly(feat.geom.wkt),
-            stadsdeel_id=self.stadsdelen.get(vollcode[0]),
-            begin_geldigheid=feat.get('INGSDATUM'),
-            einde_geldigheid=feat.get('EINDDATUM'),
-        ).save()
+            stadsdeel_id=self.stadsdelen.get(stadsdeel_id),
+            begin_geldigheid=feat.get('begindatum') or None,
+            einde_geldigheid=feat.get('einddatum') or None,
+        )
+        wijk.save()
 
 
 def log_details_wrong_geometry(model):
@@ -1734,26 +1755,28 @@ class ImportGebiedsgerichtwerkenTask(batch.BasicTask):
 
     def process(self):
         geo.process_shp(
-            self.shp_path, "GBD_gebiedsgerichtwerken.shp",
+            self.shp_path, "GBD_ggw_gebied.shp",
             self.process_feature,
             encoding=GOB_SHAPE_ENCODING)
 
     def process_feature(self, feat):
-        sdl = feat.get('STADSDEEL')
+        sdl = feat.get('sdl_code')
+        code = feat.get('code')
+        naam = feat.get('naam')
+
         if sdl not in self.stadsdelen:
             log.warning(
                 'Gebiedsgerichtwerken {} references non-existing stadsdeel {}; skipping'.format(sdl, sdl))
             return
-
-        code = feat.get('CODE')
-
-        models.Gebiedsgerichtwerken(
+        ggw = models.Gebiedsgerichtwerken(
             id=code,
-            naam=feat.get('NAAM'),
+            naam=naam,
             code=code,
             stadsdeel_id=self.stadsdelen[sdl],
             geometrie=geo.get_multipoly(feat.geom.wkt),
-        ).save()
+        )
+
+        ggw.save()
 
 
 class ImportGebiedsgerichtwerkenPraktijkgebiedenTask(batch.BasicTask):
@@ -1782,12 +1805,12 @@ class ImportGebiedsgerichtwerkenPraktijkgebiedenTask(batch.BasicTask):
 
     def process(self):
         geo.process_shp(
-            self.shp_path, "GBD_gebiedsgerichtwerken_praktijk.shp",
+            self.shp_path, "GBD_ggw_praktijkgebied.shp",
             self.process_feature,
             encoding=GOB_SHAPE_ENCODING)
 
     def process_feature(self, feat):
-        naam = feat.get('NAAM')
+        naam = feat.get('naam')
 
         models.GebiedsgerichtwerkenPraktijkgebieden(
             naam=naam,
@@ -2134,6 +2157,7 @@ class ImportBagJob(object):
 
         return [
             # no-dependencies.
+            # Not present in GOB
             # ImportIndicatieAOTTask(self.bag_path),
 
             ImportAvrTask(self.bag_path),
@@ -2172,12 +2196,14 @@ class ImportBagJob(object):
 
             ImportPandTask(self.bag_path, self.bag_wkt_path),
 
+            # Not present in GOB
             # ImportPandNaamTask(self.bag_path),
 
             # large. 500.000
             ImportVboTask(self.bag_path),
 
-            ImportGebruiksdoelenTask(self.bag_path),
+            # Not present in GOB
+            # ImportGebruiksdoelenTask(self.bag_path),
 
             # large. 500.000
             ImportNumTask(self.bag_path),

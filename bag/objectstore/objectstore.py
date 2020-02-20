@@ -440,34 +440,38 @@ def fetch_gob_files(container_name: str):
     all_gob_file_prefixes = {
         'bag/UVA2_Actueel/AVR': {'dest': 'bag', 'age_limit': 365},
         'bag/UVA2_Actueel/BRN': {'dest': 'bag', 'age_limit': 365},
-        'bag/UVA2_Actueel/OVR': {'dest': 'bag', 'age_limit': 365},
+        'bag/UVA2_Actueel/EGM': {'dest': 'bag', 'age_limit': 365},
         'bag/UVA2_Actueel/FNG': {'dest': 'bag', 'age_limit': 365},
         'bag/UVA2_Actueel/LGG': {'dest': 'bag', 'age_limit': 365},
         'bag/UVA2_Actueel/GBK': {'dest': 'bag', 'age_limit': 365},
         'bag/UVA2_Actueel/LOC': {'dest': 'bag', 'age_limit': 365},
+        'bag/UVA2_Actueel/OVR': {'dest': 'bag', 'age_limit': 365},
+        'bag/UVA2_Actueel/STS': {'dest': 'bag', 'age_limit': 365},
         'bag/UVA2_Actueel/TGG': {'dest': 'bag', 'age_limit': 365},
 
         'gebieden/UVA2_Actueel/GME': {'dest': 'gebieden', 'age_limit': 365},
         'gebieden/UVA2_Actueel/SDL': {'dest': 'gebieden', 'age_limit': 365},
 
         'gebieden/UVA2_Actueel/BRT': {'dest': 'gebieden', 'age_limit': 365},
-        'gebieden/SHP/GBD_buurt.shp': {'dest': 'gebieden', 'age_limit': 365},
-        'gebieden/SHP/GBD_buurt.dbf': {'dest': 'gebieden', 'age_limit': 365},
-        'gebieden/SHP/GBD_buurt.prj': {'dest': 'gebieden', 'age_limit': 365},
-        'gebieden/SHP/GBD_buurt.shx': {'dest': 'gebieden', 'age_limit': 365},
+        'gebieden/SHP/GBD_buurt.shp': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_buurt.dbf': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_buurt.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_buurt.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
 
         'gebieden/UVA2_Actueel/BBK': {'dest': 'gebieden', 'age_limit': 365},
-        'gebieden/SHP/GBD_bouwblok.shp': {'dest': 'gebieden', 'age_limit': 365},
-        'gebieden/SHP/GBD_bouwblok.dbf': {'dest': 'gebieden', 'age_limit': 365},
-        'gebieden/SHP/GBD_bouwblok.prj': {'dest': 'gebieden', 'age_limit': 365},
-        'gebieden/SHP/GBD_bouwblok.shx': {'dest': 'gebieden', 'age_limit': 365},
+        'gebieden/SHP/GBD_bouwblok.shp': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_bouwblok.dbf': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_bouwblok.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_bouwblok.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
 
         'bag/UVA2_Actueel/WPL': {'dest': 'bag', 'age_limit': 365},
+
         'bag/CSV_Actueel/BAG_openbare_ruimte_beschrijving_Actueel.csv': {
             'dest': 'bag_openbareruimte_beschrijving/OPR_beschrijving.csv', 'age_limit': 365},
+        'bag/BAG_LandelijkeSleutel/OPR': {'dest': 'bag', 'age_limit': 365},
         'bag/UVA2_Actueel/OPR': {'dest': 'bag', 'age_limit': 365},
-
         'bag/BAG_Geometrie/BAG_OPENBARERUIMTE_GEOMETRIE.dat': {'dest': 'bag_wkt', 'age_limit': 365},
+
         'bag/BAG_LandelijkeSleutel/NUM': {'dest': 'bag', 'age_limit': 5},
         'bag/UVA2_Actueel/NUM': {'dest': 'bag', 'age_limit': 5},
 
@@ -484,7 +488,42 @@ def fetch_gob_files(container_name: str):
         'bag/BAG_LandelijkeSleutel/PND': {'dest': 'bag', 'age_limit': 5},
         'bag/UVA2_Actueel/PND': {'dest': 'bag', 'age_limit': 5},
         'bag/BAG_Geometrie/BAG_PAND_GEOMETRIE.dat': {'dest': 'bag_wkt', 'age_limit': 5},
-        'bag/UVA2_Actueel/PNDVBO': {'dest': 'bag', 'age_limit': 5}
+        'bag/UVA2_Actueel/PNDVBO': {'dest': 'bag', 'age_limit': 5},
+
+        'gebieden/SHP/GBD_stadsdeel.shp': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_stadsdeel.dbf': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_stadsdeel.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_stadsdeel.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
+
+        'gebieden/SHP/GBD_wijk.shp': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_wijk.dbf': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_wijk.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_wijk.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
+
+        'gebieden/SHP/GBD_ggw_gebied.shp': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_ggw_gebied.dbf': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_ggw_gebied.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_ggw_gebied.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
+
+        'gebieden/SHP/GBD_ggw_praktijkgebied.shp': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_ggw_praktijkgebied.dbf': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_ggw_praktijkgebied.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_ggw_praktijkgebied.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
+
+        'gebieden/SHP/GBD_grootstedelijke_projecten.shp': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_grootstedelijke_projecten.dbf': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_grootstedelijke_projecten.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_grootstedelijke_projecten.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
+
+        'gebieden/SHP/GBD_unesco.shp': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_unesco.dbf': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_unesco.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_unesco.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
+
+        'bag/UVA2_Actueel/NUMLIGHFD': {'dest': 'bag', 'age_limit': 5},
+        'bag/UVA2_Actueel/NUMSTAHFD': {'dest': 'bag', 'age_limit': 5},
+        'bag/UVA2_Actueel/NUMVBOHFD': {'dest': 'bag', 'age_limit': 5},
+        'bag/UVA2_Actueel/NUMVBONVN': {'dest': 'bag', 'age_limit': 5},
     }
 
     connection = 'GOB_user'

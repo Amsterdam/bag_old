@@ -15,6 +15,9 @@ def uva_datum(s):
     if not s:
         return None
 
+    if len(s) != 8 or not s.isdigit():
+        log.error(f"Invalid date format for {s}")
+        return None
     return datetime.datetime.strptime(s, "%Y%m%d").date()
 
 

@@ -22,7 +22,8 @@ def process_wkt(path, filename, callback, encoding=None):
     with open(source, encoding=encoding) as f:
         rows = csv.reader(f, delimiter='|')
         for row in rows:
-            callback(row[0], GEOSGeometry(row[1]))
+            geo = GEOSGeometry(row[1]) if row[1] else None
+            callback(row[0], geo)
 
 
 def process_shp(path, filename, callback, encoding='ISO-8859-1'):

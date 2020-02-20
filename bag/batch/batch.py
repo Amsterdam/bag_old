@@ -1,3 +1,4 @@
+import time
 from abc import ABCMeta, abstractmethod
 import logging
 
@@ -39,6 +40,8 @@ class BasicTask(object):
 
     """
     name = "Basic Task"
+    count = 0
+    prev_time = time.time()
 
     class Meta:
         __class__ = ABCMeta
@@ -48,6 +51,13 @@ class BasicTask(object):
         self.process()
         self.after()
         gc.collect()
+
+    def log_progress(self):
+        self.count += 1
+        now_time = time.time()
+        if now_time - self.prev_time > 10.0:  # Report every 10 seconds
+            self.prev_time = now_time
+            log.debug(f"{self.name} processed {self.count}...")
 
     @abstractmethod
     def before(self):
