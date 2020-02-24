@@ -39,6 +39,8 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("swiftclient").setLevel(logging.WARNING)
 
+environment = os.getenv('GOB_OBJECTSTORE_ENV', 'productie')
+
 connections = {
     'bag_brk': {
         'auth_version': '2.0',
@@ -598,6 +600,6 @@ if __name__ == "__main__":
     # Download files from objectstore
     log.info("Start downloading files from objectstore")
     if args.gob:
-        fetch_gob_files('acceptatie')
+        fetch_gob_files(environment)
     else:
         fetch_diva_files()
