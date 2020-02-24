@@ -2,6 +2,8 @@
 import logging
 import os
 # Packages
+import re
+
 from django.conf import settings
 from django.contrib.gis.geos import Point
 from django.db import connection
@@ -764,10 +766,22 @@ class SetHoofdAdres(batch.BasicTask):
         del self.nummeraanduidingen
 
     def process(self):
-        list(uva2.process_uva2(self.path, "NUMLIGHFD", self.process_numlig_row, encoding=GOB_CSV_ENCODING))
-        list(uva2.process_uva2(self.path, "NUMSTAHFD", self.process_numsta_row, encoding=GOB_CSV_ENCODING))
-        list(uva2.process_uva2(self.path, "NUMVBOHFD", self.process_numvbo_row, encoding=GOB_CSV_ENCODING))
-        list(uva2.process_uva2(self.path, "NUMVBONVN", self.process_numvbonvn_row, encoding=GOB_CSV_ENCODING))
+        nummeraanduidingen = uva2.process_uva2(self.path, "NUMLIGHFD", self.process_numlig_row,
+                                               encoding=GOB_CSV_ENCODING)
+        models.Nummeraanduiding.objects.bulk_update(nummeraanduidingen, ['ligplaats_id', 'hoofdadres'],
+                                                    batch_size=database.BATCH_SIZE)
+        nummeraanduidingen = uva2.process_uva2(self.path, "NUMSTAHFD", self.process_numsta_row,
+                                               encoding=GOB_CSV_ENCODING)
+        models.Nummeraanduiding.objects.bulk_update(nummeraanduidingen, ['standplaats_id', 'hoofdadres'],
+                                                    batch_size=database.BATCH_SIZE)
+        nummeraanduidingen = uva2.process_uva2(self.path, "NUMVBOHFD", self.process_numvbo_row,
+                                               encoding=GOB_CSV_ENCODING)
+        models.Nummeraanduiding.objects.bulk_update(nummeraanduidingen, ['verblijfsobject_id', 'hoofdadres'],
+                                                    batch_size=database.BATCH_SIZE)
+        nummeraanduidingen = uva2.process_uva2(self.path, "NUMVBONVN", self.process_numvbonvn_row,
+                                               encoding=GOB_CSV_ENCODING)
+        models.Nummeraanduiding.objects.bulk_update(nummeraanduidingen, ['verblijfsobject_id', 'hoofdadres'],
+                                                    batch_size=database.BATCH_SIZE)
 
     def process_numlig_row(self, r):
         if not uva2.geldig_tijdvak(r):
@@ -791,8 +805,8 @@ class SetHoofdAdres(batch.BasicTask):
         nummeraanduiding = models.Nummeraanduiding.objects.get(pk=nummeraanduiding_id)
         nummeraanduiding.ligplaats_id = ligplaats_id
         nummeraanduiding.hoofdadres = True
-        nummeraanduiding.save()
         self.log_progress()
+        return nummeraanduiding
 
     def process_numsta_row(self, r):
         if not uva2.geldig_tijdvak(r):
@@ -816,8 +830,8 @@ class SetHoofdAdres(batch.BasicTask):
         nummeraanduiding = models.Nummeraanduiding.objects.get(id=nummeraanduiding_id)
         nummeraanduiding.standplaats_id = standplaats_id
         nummeraanduiding.hoofdadres = True
-        nummeraanduiding.save()
         self.log_progress()
+        return nummeraanduiding
 
     def process_numvbo_row(self, r):
         if not uva2.geldig_tijdvak(r):
@@ -841,8 +855,8 @@ class SetHoofdAdres(batch.BasicTask):
         nummeraanduiding = models.Nummeraanduiding.objects.get(id=nummeraanduiding_id)
         nummeraanduiding.verblijfsobject_id = vbo_id
         nummeraanduiding.hoofdadres = True
-        nummeraanduiding.save()
         self.log_progress()
+        return nummeraanduiding
 
     def process_numvbonvn_row(self, r):
         if not uva2.geldig_tijdvak(r):
@@ -866,8 +880,8 @@ class SetHoofdAdres(batch.BasicTask):
         nummeraanduiding = models.Nummeraanduiding.objects.get(id=nummeraanduiding_id)
         nummeraanduiding.verblijfsobject_id = vbo_id
         nummeraanduiding.hoofdadres = False
-        nummeraanduiding.save()
         self.log_progress()
+        return nummeraanduiding
 
 
 class ImportNumTask(batch.BasicTask, metadata.UpdateDatasetMixin):
@@ -1171,6 +1185,7 @@ class ImportVboTask(batch.BasicTask):
         self.toegang = set(models.Toegang.objects.values_list("pk", flat=True))
         self.statussen = set(models.Status.objects.values_list("pk", flat=True))
         self.buurten = set(models.Buurt.objects.values_list("pk", flat=True))
+        self.gebruiksdoelen = []
 
     def after(self):
         self.redenen_afvoer.clear()
@@ -1184,6 +1199,26 @@ class ImportVboTask(batch.BasicTask):
         self.toegang.clear()
         self.statussen.clear()
         self.buurten.clear()
+
+        geb_doel_re = re.compile(r"^(\d{4}) (.*)$")
+
+        def gen_gebruiksdoelen(gebruiksdoelen: list):
+            for vbo_id, code, omschrijving in gebruiksdoelen:
+                m = geb_doel_re.match(omschrijving)
+                if m:
+                    if code == m.group(1):
+                        omschrijving = m.group(2)
+                yield models.Gebruiksdoel(
+                    verblijfsobject_id=vbo_id,
+                    code=code,
+                    omschrijving=omschrijving,
+                    code_plus=None,
+                    omschrijving_plus=None)
+
+        log.debug('Create gebruiksdoelen...')
+        gb_objects = gen_gebruiksdoelen(self.gebruiksdoelen)
+        models.Gebruiksdoel.objects.bulk_create(gb_objects, batch_size=database.BATCH_SIZE)
+        self.gebruiksdoelen.clear()
 
         log.info('%d Verblijfsobjecten Imported', models.Verblijfsobject.objects.count())
 
@@ -1283,6 +1318,9 @@ class ImportVboTask(batch.BasicTask):
         if buurt_id and buurt_id not in self.buurten:
             log.warning('Verblijfsobject {} references non-existing bron {}; ignoring'.format(pk, buurt_id))
             buurt_id = None
+
+        self.gebruiksdoelen.append((pk, r['GebruiksdoelVerblijfsobjectDomein'],
+                                    r['OmschrijvingGebruiksdoelVerblijfsobjectDomein']))  # "2075 Woning"
 
         self.log_progress()
         return models.Verblijfsobject(

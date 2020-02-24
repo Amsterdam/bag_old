@@ -79,7 +79,6 @@ GOB_TABLE_TARGETS = [
     (515178, 0, "bag_gebruiksdoel"),
     (1, 0, "bag_gemeente"),
     (53, 9, "bag_grootstedelijkgebied"),
-    (0, 0, "bag_indicatieadresseerbaarobject"),
     (6, 0, "bag_ligging"),
     (2913, 0, "bag_ligplaats"),
     (5, 0, "bag_locatieingang"),
