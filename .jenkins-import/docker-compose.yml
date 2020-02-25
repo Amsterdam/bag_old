@@ -19,7 +19,7 @@ services:
     command: elasticsearch -Ehttp.host=0.0.0.0 -Etransport.host=127.0.0.1
 
   importer:
-    image: repo.data.amsterdam.nl/datapunt/bag:${ENVIRONMENT}
+    image: ${DOCKER_REGISTRY_HOST}/datapunt/bag:${ENVIRONMENT}
     links:
       - database:database
       - elasticsearch:elasticsearch
