@@ -15,6 +15,9 @@ def uva_datum(s):
     if not s:
         return None
 
+    if len(s) != 8 or not s.isdigit():
+        log.error(f"Invalid date format for {s}")
+        return None
     return datetime.datetime.strptime(s, "%Y%m%d").date()
 
 
@@ -48,12 +51,12 @@ def _wrap_row(r, headers):
 @contextmanager
 def _context_reader(
         source, skip=3, quotechar=None, quoting=csv.QUOTE_NONE,
-        with_header=True):
+        with_header=True, encoding='cp1252'):
 
     if not os.path.exists(source):
         raise ValueError("File not found: {}".format(source))
 
-    with open(source, encoding='cp1252') as f:
+    with open(source, encoding=encoding) as f:
         rows = csv.reader(f, delimiter=';', quotechar=quotechar, quoting=quoting)
 
         for i in range(skip):
@@ -150,13 +153,14 @@ def get_filedate(path, file_code):
         return uva_datum(m.groups()[0])
 
 
-def process_uva2(path, file_code, process_row_callback):
+def process_uva2(path, file_code, process_row_callback, encoding='cp1252'):
     """
     Process a UVA2 file
 
     :param path: path containing the UVA2 file
     :param file_code: three-letter code identifying the file
     :param process_row_callback: function taking one parameter that is called on every row
+    :param encoding of the file
     :return: an iterable over the results of process_row_callback
     """
 
@@ -164,7 +168,7 @@ def process_uva2(path, file_code, process_row_callback):
 
     cb = logging_callback(source, process_row_callback)
 
-    with _context_reader(source) as rows:
+    with _context_reader(source, encoding=encoding) as rows:
         for row in rows:
             result = cb(row)
             if result:
@@ -173,7 +177,7 @@ def process_uva2(path, file_code, process_row_callback):
 
 def process_csv(
         path, file_code, process_row_callback,
-        with_header=True, quotechar='"', source=None):
+        with_header=True, quotechar='"', source=None, encoding='cp1252'):
 
     if not source:
         source = resolve_file(path, file_code, extension='csv')
@@ -182,7 +186,7 @@ def process_csv(
 
     with _context_reader(
             source, skip=0, quotechar=quotechar,
-            quoting=csv.QUOTE_MINIMAL, with_header=with_header) as rows:
+            quoting=csv.QUOTE_MINIMAL, with_header=with_header, encoding=encoding) as rows:
 
         for row in rows:
             result = cb(row)
