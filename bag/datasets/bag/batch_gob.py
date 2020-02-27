@@ -1086,10 +1086,7 @@ class ImportStandplaatsenTask(batch.BasicTask):
         assert models.Standplaats.objects.filter(
             geometrie__isnull=True).count() == 0, "Standplaats zonder geometrie!"
 
-        log.info(
-            '%s Standplaatsen',
-            models.Standplaats.objects.filter(
-                geometrie__isnull=True).count())
+        log.info('%s Standplaatsen imported', models.Standplaats.objects.count())
 
     def process(self):
         self.landelijke_ids = uva2.read_landelijk_id_mapping(self.bag_path, "STA")
