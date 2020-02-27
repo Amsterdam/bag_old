@@ -59,13 +59,13 @@ def check_data(request):
             content_type="text/plain", status=500)
 
     # check wkpb
-    try:
-        assert Beperking.objects.count() > 10
-    except:
-        log.exception("No WKPD data found")
-        return HttpResponse(
-            "No WKPD data found",
-            content_type="text/plain", status=500)
+    # try:
+    #     assert Beperking.objects.count() > 10
+    # except:
+    #     log.exception("No WKPD data found")
+    #     return HttpResponse(
+    #         "No WKPD data found",
+    #         content_type="text/plain", status=500)
 
     # check elastic
     client = Elasticsearch(settings.ELASTIC_SEARCH_HOSTS)
