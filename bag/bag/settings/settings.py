@@ -191,20 +191,6 @@ SWAGGER_SETTINGS = {
     }
 }
 
-
-OBJECTSTORE = {
-    'auth_version': '2.0',
-    'authurl': 'https://identity.stack.cloudvps.com/v2.0',
-    'user': os.getenv('OBJECTSTORE_USER', 'bag_brk'),
-    'key': os.getenv('BAG_OBJECTSTORE_PASSWORD', 'insecure'),
-    'tenant_name': 'BGE000081_BAG',
-    'os_options': {
-        'tenant_id': '4f2f4b6342444c84b3580584587cfd18',
-        'region_name': 'NL',
-        'endpoint_type': 'internalURL'
-    }
-}
-
 PROJECT_DIR = os.path.abspath(os.path.join(BASE_DIR, '..', '..'))
 
 DIVA_DIR = os.path.abspath(os.path.join(PROJECT_DIR, 'data'))
