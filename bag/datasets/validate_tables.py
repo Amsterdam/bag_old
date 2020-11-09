@@ -8,7 +8,7 @@ from django.db import connection
 LOG = logging.getLogger(__name__)
 
 TABLE_TARGETS = [
-    (8597, 0, "bag_bouwblok"),
+    (9033, 0, "bag_bouwblok"),
     (100, 0, "bag_bron"),
     (481, 0, "bag_buurt"),
     (99, 0, "bag_buurtcombinatie"),
