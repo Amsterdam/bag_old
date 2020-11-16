@@ -265,10 +265,10 @@ def fetch_gob_files(container_name: str):
         'gebieden/SHP/GBD_grootstedelijke_projecten.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
         'gebieden/SHP/GBD_grootstedelijke_projecten.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
 
-        'gebieden/SHP/GBD_unesco.shp': {'dest': 'gebieden_shp', 'age_limit': 365},
-        'gebieden/SHP/GBD_unesco.dbf': {'dest': 'gebieden_shp', 'age_limit': 365},
-        'gebieden/SHP/GBD_unesco.prj': {'dest': 'gebieden_shp', 'age_limit': 365},
-        'gebieden/SHP/GBD_unesco.shx': {'dest': 'gebieden_shp', 'age_limit': 365},
+        'gebieden/SHP/GBD_unesco.shp': {'dest': 'gebieden_shp', 'age_limit': -1},
+        'gebieden/SHP/GBD_unesco.dbf': {'dest': 'gebieden_shp', 'age_limit': -1},
+        'gebieden/SHP/GBD_unesco.prj': {'dest': 'gebieden_shp', 'age_limit': -1},
+        'gebieden/SHP/GBD_unesco.shx': {'dest': 'gebieden_shp', 'age_limit': -1},
 
         'bag/UVA2_Actueel/NUMLIGHFD': {'dest': 'bag', 'age_limit': 5},
         'bag/UVA2_Actueel/NUMSTAHFD': {'dest': 'bag', 'age_limit': 5},
@@ -312,7 +312,8 @@ def fetch_gob_files(container_name: str):
         raise ValueError("Missing files: " + str(set(all_gob_file_prefixes.keys()) - set(to_download.keys())))
 
     for key, entry in to_download.items():
-        if entry['date'] and abs((now - entry['date']).days) > all_gob_file_prefixes[key]['age_limit']:
+        file_max_age = all_gob_file_prefixes[key]['age_limit']
+        if entry['date'] and 0 < file_max_age < abs((now - entry['date']).days):
             raise ValueError(f"File {entry['path']} is too old")
         filename = os.path.split(entry['path'])[1]
         dest = all_gob_file_prefixes[key]['dest']
