@@ -47,7 +47,7 @@ ipaddress==1.0.23
 iso8601==0.1.12
 isort==4.3.21
 itypes==1.1.0
-Jinja2==2.11.1
+Jinja2==2.11.3
 jsonschema==3.2.0
 keystoneauth1==3.18.0
 lazy-object-proxy==1.4.3
