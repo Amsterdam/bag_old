@@ -15,7 +15,7 @@ cryptography==3.3.2
 datapunt-authorization-django==0.3.1
 debtcollector==2.0.0
 defusedxml==0.6.0
-Django==2.2.13
+Django==2.2.20
 django-debug-toolbar==2.2
 django-extensions==2.2.8
 django-filter==2.3.0
